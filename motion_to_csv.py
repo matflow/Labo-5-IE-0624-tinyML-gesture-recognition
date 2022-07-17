@@ -12,10 +12,10 @@ writer = csv.writer(f)
 print(header)
 writer.writerow(header)  # escribe encabezado
 
-SAMPLES_PER_GESTURE = 2000
+SAMPLES = 2000
 counter = 0
 
-while(counter < SAMPLES_PER_GESTURE):
+while(counter < SAMPLES):
 #while():
     
     input = PuertoSerial.readline().decode('utf-8').replace('\r', "").replace('\n', "")
