@@ -24,6 +24,10 @@ limitations under the License.
 #include <libopencm3/stm32/usart.h>
 #include <libopencm3/cm3/systick.h>
 #include "printf.h"
+#include <libopencm3/stm32/spi.h>
+#include <gyro.h>
+//#include <console.h>
+//#include <clock.h>
 
 extern "C" {
     void sys_tick_handler(void);
@@ -32,6 +36,42 @@ extern "C" {
 extern "C" void _putchar(char character)
 {
   usart_send_blocking(USART1, character); /* USART1: Send byte. */
+}
+
+// setup de spi para comunicación con regs de gyro
+void spi_setup(void)
+{
+    rcc_periph_clock_enable(RCC_SPI5);
+	/* Enable the GPIO ports whose pins we are using */
+    rcc_periph_clock_enable(RCC_GPIOC);
+	rcc_periph_clock_enable(RCC_GPIOF);
+
+    /* Chip select line */
+	gpio_mode_setup(GPIOC, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, GPIO1);
+    gpio_set(GPIOC, GPIO1);
+
+	/*gpio_mode_setup(GPIOF, GPIO_MODE_AF, GPIO_PUPD_PULLDOWN,
+			GPIO7 | GPIO8 | GPIO9);*/
+    gpio_mode_setup(GPIOF, GPIO_MODE_AF, GPIO_PUPD_NONE,
+		GPIO7 | GPIO8 | GPIO9);   
+	gpio_set_af(GPIOF, GPIO_AF5, GPIO7 | GPIO8 | GPIO9);
+	/*gpio_set_output_options(GPIOF, GPIO_OTYPE_PP, GPIO_OSPEED_25MHZ,
+				GPIO7 | GPIO9);*/
+
+    // spi initialization
+    spi_set_master_mode(SPI5);
+	spi_set_baudrate_prescaler(SPI5, SPI_CR1_BR_FPCLK_DIV_64);
+	spi_set_clock_polarity_0(SPI5);
+	spi_set_clock_phase_0(SPI5);
+	spi_set_full_duplex_mode(SPI5);
+	spi_set_unidirectional_mode(SPI5); /* bidirectional but in 3-wire */
+    //spi_set_data_size(SPI5, SPI_CR2_DS_8BIT);  //
+	spi_enable_software_slave_management(SPI5);
+	spi_send_msb_first(SPI5);
+	spi_set_nss_high(SPI5);
+    //spi_fifo_reception_threshold_8bit(SPI5); //
+    SPI_I2SCFGR(SPI5) &= ~SPI_I2SCFGR_I2SMOD;  //
+	spi_enable(SPI5);
 }
 
 static void usart_setup(void)
@@ -113,13 +153,35 @@ static void gpio_setup() {
 
 void* __dso_handle;
 
+
 int main(int argc, char* argv[]) {
 
     clock_setup();
     systick_setup();
     gpio_setup();
     usart_setup();
+    spi_setup();
     printf("Initial setup done!\n");
+
+    // Config de CTRL_REG1
+    gpio_clear(GPIOC, GPIO1);         // baja CS
+	spi_send(SPI5, GYR_CTRL_REG1);   // indica cual reg configurar 
+	spi_read(SPI5);                  // lee respuesta
+	spi_send(SPI5, GYR_CTRL_REG1_PD | GYR_CTRL_REG1_XEN |   // escribe el valor del registro
+			GYR_CTRL_REG1_YEN | GYR_CTRL_REG1_ZEN |
+			(3 << GYR_CTRL_REG1_BW_SHIFT));
+	spi_read(SPI5);                    // lee respuesta
+	gpio_set(GPIOC, GPIO1);             // levanta CS
+
+
+    // Config de CTRL_REG4
+    gpio_clear(GPIOC, GPIO1);
+	spi_send(SPI5, GYR_CTRL_REG4);
+	spi_read(SPI5);
+	spi_send(SPI5, (1 << GYR_CTRL_REG4_FS_SHIFT));  // valor para 500 dps
+	spi_read(SPI5);
+	gpio_set(GPIOC, GPIO1);
+
 
 //  while(true){
     gpio_set(GPIOG, GPIO13);

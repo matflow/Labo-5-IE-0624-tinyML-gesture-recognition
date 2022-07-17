@@ -24,6 +24,11 @@ limitations under the License.
 #include "tensorflow/lite/schema/schema_generated.h"
 #include "tensorflow/lite/version.h"
 #include "printf.h"
+#include <libopencm3/stm32/gpio.h>
+#include <libopencm3/stm32/spi.h>
+#include <libopencm3/stm32/usart.h> 
+#include <gyro.h>
+////#include <console.h>
 
 // Globals, used for compatibility with Arduino-style sketches.
 namespace {
@@ -45,6 +50,33 @@ const char* GESTURES[] = {
   "estacionario",
   "leftright"
 };
+
+static void my_usart_print_int(uint32_t usart, int32_t value)
+{
+	int8_t i;
+	int8_t nr_digits = 0;
+	char buffer[25];
+
+	if (value < 0) {
+		usart_send_blocking(usart, '-');
+		value = value * -1;
+	}
+
+	if (value == 0) {
+		usart_send_blocking(usart, '0');
+	}
+
+	while (value > 0) {
+		buffer[nr_digits++] = "0123456789"[value % 10];
+		value /= 10;
+	}
+
+	for (i = nr_digits-1; i >= 0; i--) {
+		usart_send_blocking(usart, buffer[i]);
+	}
+
+	//usart_send_blocking(usart, '\t');
+}
 
 #define NUM_GESTURES (sizeof(GESTURES) / sizeof(GESTURES[0]))
 
@@ -93,6 +125,65 @@ void setup() {
 
 // The name of this function is important for Arduino compatibility.
 void loop() {
+
+  // Vars de ejes
+  int16_t gyr_x;
+  int16_t gyr_y;
+  int16_t gyr_z;
+
+  // Lee 8 LSB de OUT_X
+	gpio_clear(GPIOC, GPIO1);
+	spi_send(SPI5, GYR_OUT_X_L | GYR_RNW);
+	spi_read(SPI5);
+	spi_send(SPI5, 0);
+	gyr_x=spi_read(SPI5);
+	gpio_set(GPIOC, GPIO1);
+
+  // Lee 8 MSB de OUT_X
+	gpio_clear(GPIOC, GPIO1);
+	spi_send(SPI5, GYR_OUT_X_H | GYR_RNW);
+	spi_read(SPI5);
+	spi_send(SPI5, 0);
+	gyr_x|=spi_read(SPI5) << 8;
+	gpio_set(GPIOC, GPIO1);
+
+  // Lee 8 LSB de OUT_Y
+	gpio_clear(GPIOC, GPIO1);
+	spi_send(SPI5, GYR_OUT_Y_L | GYR_RNW);
+	spi_read(SPI5);
+	spi_send(SPI5, 0);
+	gyr_y=spi_read(SPI5);
+	gpio_set(GPIOC, GPIO1);
+
+  // Lee 8 MSB de OUT_Y
+	gpio_clear(GPIOC, GPIO1);
+	spi_send(SPI5, GYR_OUT_Y_H | GYR_RNW);
+	spi_read(SPI5);
+	spi_send(SPI5, 0);
+	gyr_y|=spi_read(SPI5) << 8;
+	gpio_set(GPIOC, GPIO1);
+
+  // Lee 8 LSB de OUT_Z
+	gpio_clear(GPIOC, GPIO1);
+	spi_send(SPI5, GYR_OUT_Z_L | GYR_RNW);
+	spi_read(SPI5);
+	spi_send(SPI5, 0);
+	gyr_z=spi_read(SPI5);
+	gpio_set(GPIOC, GPIO1);
+
+  // Lee 8 MSB de OUT_Z
+	gpio_clear(GPIOC, GPIO1);
+	spi_send(SPI5, GYR_OUT_Z_H | GYR_RNW);
+	spi_read(SPI5);
+	spi_send(SPI5, 0);
+	gyr_z|=spi_read(SPI5) << 8;
+	gpio_set(GPIOC, GPIO1);
+
+  // Multiplicar por sensibilidad de gyro para 500dps
+  gyr_x = gyr_x*L3GD20_SENSITIVITY_500DPS;
+  gyr_y = gyr_y*L3GD20_SENSITIVITY_500DPS;
+  gyr_z = gyr_z*L3GD20_SENSITIVITY_500DPS;
+
   // Calculate an x value to feed into the model. We compare the current
   // inference_count to the number of inferences per cycle to determine
   // our position within the range of possible x values the model was
@@ -118,7 +209,14 @@ void loop() {
   // Output the results. A custom HandleOutput function can be implemented
   // for each supported hardware target.
   //HandleOutput(error_reporter, x_val, y_val);
-  printf("x_value: %.2f, y_value: %.2f\n\r", x_val, y_val);
+  //printf("x_value: %.2f, y_value: %.2f\n\r", x_val, y_val);
+  //printf("x_value: %.2f, y_value: %.2f\n\r, z_value: %.2f\n\r", gyr_x, gyr_y, gyr_z);
+
+  // imprimir valores de giroscopio para verificar
+	printf("X: "); my_usart_print_int(USART1, (gyr_x)); 
+  printf("\tY: "); my_usart_print_int(USART1, (gyr_y)); 
+  printf("\tZ: "); my_usart_print_int(USART1, (gyr_z)); 
+  printf("\r\n");
 
   // Increment the inference_counter, and reset it if we have reached
   // the total number per cycle
