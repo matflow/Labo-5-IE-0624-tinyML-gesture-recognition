@@ -211,17 +211,11 @@ void loop() {
     }else{
       samplesRead = 0;
     }
-  }
   
   
 
   // Read the predicted y value from the model's output tensor
 
-  // Output the results. A custom HandleOutput function can be implemented
-  // for each supported hardware target.
-  //HandleOutput(error_reporter, gyr_x, gyr_y);
-  //printf("gyr_xue: %.2f, gyr_yue: %.2f\n\r", gyr_x, gyr_y);
-  //printf("gyr_xue: %.2f, gyr_yue: %.2f\n\r, gyr_zue: %.2f\n\r", gyr_x, gyr_y, gyr_z);
 
   // imprimir valores de giroscopio para verificar
 	printf("X: "); my_usart_print_int(USART1, (gyr_x)); 
@@ -239,4 +233,5 @@ void loop() {
     printf("  ");
   }
   printf("\r\n");
+}
 }
