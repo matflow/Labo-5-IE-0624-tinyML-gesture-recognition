@@ -4,7 +4,7 @@ Proyect meant for the recognition of three different motions or gestures using t
 ### To execute:
 * #### spi-gyro for gesture recording:
   * Clone the repository _libopencm3-examples_
-  * Copy the folder /spi-gyro has to be copied into the folder _libopencm3-examples_ as: _libopencm3-examples/examples/stm32/f4/stm32f429i-discovery/spi-gyro/_ and move to this location
+  * Copy the folder /spi-gyro into the folder _libopencm3-examples_ as: _libopencm3-examples/examples/stm32/f4/stm32f429i-discovery/spi-gyro/_ and move to this location
   * Run 'make', then run './quemar.sh' on the terminal.
   
 * #### STM32detection for the gesture recognition program:
